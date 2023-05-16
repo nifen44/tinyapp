@@ -65,7 +65,13 @@ app.post("/urls", (req, res) => {
     res.redirect("/urls")
   })
 
-  
+app.post("/urls/:id/edit", (req, res)=>{
+  const { editId } = req.params;
+  const { longURL } = req.body;
+  console.log(longURL);
+  urlDatabase[editId] = longURL;
+  res.redirect("/urls");
+})
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
