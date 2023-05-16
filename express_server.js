@@ -1,39 +1,52 @@
 const express = require("express");
 const app = express();
 const PORT = 8080; // default port 8080
+const cookieParser = require('cookie-parser');
 
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com"
 };
 
-app.get("/", (req, res) => {
-  return res.send("Hello!");
-});
+// app.get("/", (req, res) => {
+//   return res.send("Hello!");
+// });
 
-app.get("/urls.json", (req, res)=>{
-    return res.json(urlDatabase);
-});
+// app.get("/urls.json", (req, res)=>{
+//     return res.json(urlDatabase);
+// });
 
-app.get("/hello", (req, res) => {
-    const templateVars = { greeting: "Hello World!"};
-    return res.render('hello_world', templateVars);
-  });
+// app.get("/hello", (req, res) => {
+//     const templateVars = { greeting: "Hello World!"};
+//     return res.render('hello_world', templateVars);
+//   });
 
 app.get('/urls', (req, res)=>{
-    const templateVars = {urls: urlDatabase};
+    const templateVars = {
+      username: req.cookies['username'],
+      urls: urlDatabase
+    }
     return res.render("urls_index", templateVars);
 })
 
 app.get('/urls/new', (req, res)=>{
-    return res.render('urls_new');
+  const templateVars = {
+    username: req.cookies['username'],
+  }
+    return res.render('urls_new', templateVars);
 })
 
 app.get('/urls/:id', (req, res)=>{
-    const templateVars = {id: req.params.id, longURL: urlDatabase[req.params.id]};
+  const templateVars = {
+    id: req.params.id, 
+    longURL: urlDatabase[req.params.id],
+    username: req.cookies['username'],
+  }
+
     if(templateVars){
         return res.render("urls_show", templateVars);
     }
@@ -42,6 +55,11 @@ app.get('/urls/:id', (req, res)=>{
 app.get('/u/:id', (req, res)=>{
     const longURL = urlDatabase[req.params.id];
     res.redirect(longURL);
+})
+
+app.get('/urls/:id/edit', (req, res)=>{
+  const editId = req.params.id;
+  res.redirect(`/urls/${editId}`);
 })
 
 app.post("/urls", (req, res) => {
@@ -65,13 +83,27 @@ app.post("/urls", (req, res) => {
     res.redirect("/urls")
   })
 
-app.post("/urls/:id/edit", (req, res)=>{
-  const { editId } = req.params;
-  const { longURL } = req.body;
-  console.log(longURL);
-  urlDatabase[editId] = longURL;
-  res.redirect("/urls");
-})
+  app.post('/urls/:id/edit', (req, res)=>{
+    const { id } = req.params;
+    const { longURL } = req.body;
+
+    console.log(`${id}, ${longURL}`);
+
+    urlDatabase[id] = longURL;
+    res.redirect("/urls")
+  })
+
+  app.post("/login", (req, res)=>{
+    const { username } = req.body;
+    res.cookie('username', username);
+
+    res.redirect("/urls");
+  })
+
+  app.post("/logout", (req, res)=>{
+    res.clearCookie('username');
+    res.redirect('/urls');
+  })
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
