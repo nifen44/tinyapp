@@ -104,33 +104,48 @@ app.post("/urls", (req, res) => {
     res.redirect("/urls")
   })
 
+    // go to login page
+    app.get('/login', (req, res)=>{
+      const templateVars = {
+        user: null,
+        urls: urlDatabase
+      }
+      return res.render('login', templateVars);
+    })
+
   // login
   app.post("/login", (req, res)=>{
     const { email, password } = req.body;
     const user = getUserByEmail(email);
     if(user){
-      console.log(`login success: ${user.email}`);
-      res.cookie('user_id', user.id);
-      res.redirect('/urls');
+      // check password
+      if(user.password !== password){
+        return res.sendStatus(403);
+      }else{
+        // console.log(`login success: ${user.email}`);
+        res.cookie('user_id', user.id);
+        res.redirect('/urls');
+      }
+      
     }else{
-      res.sendStatus(400);
+      return res.sendStatus(403);
     }
   })
 
-  // go to login page
-  app.get('/login', (req, res)=>{
-    return res.render('login');
-  })
 
   // logout 
   app.get("/logout", (req, res)=>{
     res.clearCookie('user_id');
-    res.redirect('/urls');
+    res.redirect('/login');
   })
 
   // go to register page
   app.get('/register', (req, res)=>{
-    return res.render('registration');
+    const templateVars = {
+      user: null,
+      urls: urlDatabase
+    }
+    return res.render('registration', templateVars);
   })
 
   // register user
