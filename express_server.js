@@ -33,6 +33,7 @@ app.get('/urls', (req, res)=>{
       user: users[req.cookies['user_id']],
       urls: urlDatabase
     }
+    console.log(`ready go to index page- ${templateVars.user}`);
     return res.render("urls_index", templateVars);
 })
 
@@ -106,11 +107,10 @@ app.post("/urls", (req, res) => {
   // login
   app.post("/login", (req, res)=>{
     const { email, password } = req.body;
-    console.log(email);
-    console.log(users);
     const user = getUserByEmail(email);
     if(user){
-      res.cookie('user_id', email);
+      console.log(`login success: ${user.email}`);
+      res.cookie('user_id', user.id);
       res.redirect('/urls');
     }else{
       res.sendStatus(400);
