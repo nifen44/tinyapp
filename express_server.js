@@ -8,37 +8,39 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  // "b2xVn2": {longURL: "http://www.lighthouselabs.ca", userID: "aJ48lW"},
+  // "9sm5xK": {longURL: "http://www.google.com", userID: "aJ48lW"}
 };
 
-const users = {};
-
-// app.get("/", (req, res) => {
-//   return res.send("Hello!");
-// });
-
-// app.get("/urls.json", (req, res)=>{
-//     return res.json(urlDatabase);
-// });
-
-// app.get("/hello", (req, res) => {
-//     const templateVars = { greeting: "Hello World!"};
-//     return res.render('hello_world', templateVars);
-//   });
+let users = {};
 
 // go to index page
 app.get('/urls', (req, res)=>{
-    const templateVars = {
-      user: users[req.cookies['user_id']],
-      urls: urlDatabase
+  if(!req.cookies['user_id'] || req.cookies['user_id'] === ''){
+    goToCertifyPage(res, 'login');
+  }else{
+    for(const id in users){
+      if(users[id].id === req.cookies['user_id']){
+        const currentUserUrls = urlsForUser(req.cookies['user_id']);
+        console.log(currentUserUrls);
+        const templateVars = {
+          user: users[req.cookies['user_id']],
+          urls: currentUserUrls,
+        }
+        return res.render("urls_index", templateVars);
+      }
     }
-    console.log(`ready go to index page- ${templateVars.user}`);
-    return res.render("urls_index", templateVars);
+    goToCertifyPage(res, 'login');
+  }
+    
 })
 
 // go to create page
 app.get('/urls/new', (req, res)=>{
+  if(!req.cookies['user_id'] || req.cookies['user_id'] === ''){
+    return res.redirect('/login');
+
+  }
   const templateVars = {
     user: users[req.cookies['user_id']],
   }
@@ -47,20 +49,35 @@ app.get('/urls/new', (req, res)=>{
 
 // go to link detail page
 app.get('/urls/:id', (req, res)=>{
-  const templateVars = {
-    id: req.params.id, 
-    longURL: urlDatabase[req.params.id],
-    user: users[req.cookies['user_id']],
+
+  //POST /urls/:id should return a relevant error message if the user is not logged in
+  if(!req.cookies['user_id'] || req.cookies['user_id'] === ''){
+    return res.send("you haven't login, can not access this page");
   }
 
-    if(templateVars){
-        return res.render("urls_show", templateVars);
-    }
+  //POST /urls/:id should return a relevant error message if id does not exist
+
+  //POST /urls/:id should return a relevant error message if the user does not own the URL
+  const currentUserUrls = urlsForUser(req.cookies['user_id']);
+  if(currentUserUrls[req.params.id] && currentUserUrls[req.params.id]!== undefined){
+      const templateVars = {
+        id: req.params.id, 
+        longURL: urlDatabase[req.params.id].longURL,
+        user: users[req.cookies['user_id']],
+      }
+  
+      if(templateVars){
+          return res.render("urls_show", templateVars);
+      }
+  }else{
+    res.send('you can not access this url');
+  }
+  
 })
 
  // go to real link page by using shortURL
 app.get('/u/:id', (req, res)=>{
-    const longURL = urlDatabase[req.params.id];
+    const longURL = urlDatabase[req.params.id].longURL;
     res.redirect(longURL);
 })
 
@@ -72,25 +89,48 @@ app.get('/urls/:id/edit', (req, res)=>{
 
  // create new link
 app.post("/urls", (req, res) => {
+  if(!req.cookies['user_id'] || req.cookies['user_id'] === ''){
+    return res.sendStatus(403);
+  }else{
+    for(const id in users){
+      if(users[id].id === req.cookies['user_id']){
+        const id = generateRandomString(6);
+        urlDatabase[id] = {
+          longURL: req.body.longURL,
+          userID: req.cookies['user_id']
+        };
+        console.log(urlDatabase);
+        res.redirect(`/urls/${id}`);
+      }
+    }
+  }
     console.log(req.body); // Log the POST request body to the console
     // res.send("Ok"); // Respond with 'Ok' (we will replace this)
 
-    const id = generateRandomString(6);
     
-    urlDatabase[id] = req.body.longURL;
-
-    console.log(urlDatabase);
-    res.redirect(`/urls/${id}`);
   });
 
   // delete link
-  app.post("/urls/:id/delete", (req, res)=>{
+  app.get("/urls/:id/delete", (req, res)=>{
     console.log(req.params.id);
+    //POST /urls/:id/delete should return a relevant error message if the user is not logged in
+    if(!req.cookies['user_id'] || req.cookies['user_id'] === ''){
+      return res.send("you haven't login, can not access this page");
+    }
 
-    const deleteId = req.params.id;
-    delete urlDatabase[deleteId];
+    //POST /urls/:id/delete should return a relevant error message if id does not exist
+    //POST /urls/:id/delete should return a relevant error message if the user does not own the URL.
+    const currentUserUrls = urlsForUser(req.cookies['user_id']);
+    if(currentUserUrls[req.params.id] && currentUserUrls[req.params.id]!== undefined){
+      const deleteId = req.params.id;
+      delete urlDatabase[deleteId];
+      res.redirect("/urls");
+    }else{
+      res.send("No such url");
+    }
+    
 
-    res.redirect("/urls")
+    
   })
 
   // edit link
@@ -99,18 +139,25 @@ app.post("/urls", (req, res) => {
     const { longURL } = req.body;
 
     console.log(`${id}, ${longURL}`);
-
-    urlDatabase[id] = longURL;
+    console.log(`------${urlDatabase}------`);
+    urlDatabase[id].longURL = longURL;
     res.redirect("/urls")
   })
 
     // go to login page
     app.get('/login', (req, res)=>{
-      const templateVars = {
-        user: null,
-        urls: urlDatabase
+      if(!req.cookies['user_id'] || req.cookies['user_id'] === ''){
+        goToCertifyPage(res, 'login');
+      }else{
+        // cookie is exist, we need to check if the cookie matches one of the user in users
+        for(const id in users){
+          if(users[id].id === req.cookies['user_id']){
+            return res.redirect('/urls');
+          }
+        }
+        goToCertifyPage(res, 'login');
       }
-      return res.render('login', templateVars);
+      
     })
 
   // login
@@ -141,11 +188,18 @@ app.post("/urls", (req, res) => {
 
   // go to register page
   app.get('/register', (req, res)=>{
-    const templateVars = {
-      user: null,
-      urls: urlDatabase
+    if(!req.cookies['user_id'] || req.cookies['user_id'] === ''){
+      goToCertifyPage(res, 'registration');
+    }else{
+      // cookie is exist, we need to check if the cookie matches one of the user in users
+      for(const id in users){
+        if(users[id].id === req.cookies['user_id']){
+          return res.redirect('/urls');
+        }
+      }
+      goToCertifyPage(res, 'registration');
     }
-    return res.render('registration', templateVars);
+    
   })
 
   // register user
@@ -159,6 +213,7 @@ app.post("/urls", (req, res) => {
 
     if(getUserByEmail(email)){
       // user has already exist
+      console.log('--user exist--')
       return res.sendStatus(400);
     }
 
@@ -167,6 +222,8 @@ app.post("/urls", (req, res) => {
       email,
       password,
     }
+
+    console.log(Object.entries(users));
 
     res.cookie('user_id', userId);
 
@@ -197,4 +254,23 @@ function getUserByEmail(email){
   }
 
   return null;
+}
+
+function goToCertifyPage(res, page){
+  const templateVars = {
+    user: null,
+    urls: urlDatabase
+  }
+  return res.render(page, templateVars);
+}
+
+function urlsForUser(userId){
+  let userUrls = {};
+  for(const id in urlDatabase){
+    if(urlDatabase[id].userID === userId){
+      userUrls[id] = urlDatabase[id];
+    }
+  }
+
+  return userUrls;
 }
