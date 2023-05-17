@@ -1,11 +1,18 @@
 const express = require("express");
 const app = express();
+const cookieSession = require('cookie-session');
+const bcrypt = require('bcryptjs');
 const PORT = 8080; // default port 8080
-const cookieParser = require('cookie-parser');
+
+const { getUserByEmail } = require('./helpers');
+
 
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
+app.use(cookieSession({
+  name:'session',
+  keys: ['key1', 'key2'],
+}));
 
 const urlDatabase = {
   // "b2xVn2": {longURL: "http://www.lighthouselabs.ca", userID: "aJ48lW"},
@@ -16,15 +23,15 @@ let users = {};
 
 // go to index page
 app.get('/urls', (req, res)=>{
-  if(!req.cookies['user_id'] || req.cookies['user_id'] === ''){
+  if(!req.session.user_id || req.session.user_id === ''){
     goToCertifyPage(res, 'login');
   }else{
     for(const id in users){
-      if(users[id].id === req.cookies['user_id']){
-        const currentUserUrls = urlsForUser(req.cookies['user_id']);
+      if(users[id].id === req.session.user_id){
+        const currentUserUrls = urlsForUser(req.session.user_id);
         console.log(currentUserUrls);
         const templateVars = {
-          user: users[req.cookies['user_id']],
+          user: users[req.session.user_id],
           urls: currentUserUrls,
         }
         return res.render("urls_index", templateVars);
@@ -37,12 +44,12 @@ app.get('/urls', (req, res)=>{
 
 // go to create page
 app.get('/urls/new', (req, res)=>{
-  if(!req.cookies['user_id'] || req.cookies['user_id'] === ''){
+  if(!req.session.user_id || req.session.user_id === ''){
     return res.redirect('/login');
 
   }
   const templateVars = {
-    user: users[req.cookies['user_id']],
+    user: users[req.session.user_id],
   }
     return res.render('urls_new', templateVars);
 })
@@ -51,19 +58,19 @@ app.get('/urls/new', (req, res)=>{
 app.get('/urls/:id', (req, res)=>{
 
   //POST /urls/:id should return a relevant error message if the user is not logged in
-  if(!req.cookies['user_id'] || req.cookies['user_id'] === ''){
+  if(!req.session.user_id || req.session.user_id === ''){
     return res.send("you haven't login, can not access this page");
   }
 
   //POST /urls/:id should return a relevant error message if id does not exist
 
   //POST /urls/:id should return a relevant error message if the user does not own the URL
-  const currentUserUrls = urlsForUser(req.cookies['user_id']);
+  const currentUserUrls = urlsForUser(req.session.user_id);
   if(currentUserUrls[req.params.id] && currentUserUrls[req.params.id]!== undefined){
       const templateVars = {
         id: req.params.id, 
         longURL: urlDatabase[req.params.id].longURL,
-        user: users[req.cookies['user_id']],
+        user: users[req.session.user_id],
       }
   
       if(templateVars){
@@ -89,15 +96,15 @@ app.get('/urls/:id/edit', (req, res)=>{
 
  // create new link
 app.post("/urls", (req, res) => {
-  if(!req.cookies['user_id'] || req.cookies['user_id'] === ''){
+  if(!req.session.user_id || req.session.user_id === ''){
     return res.sendStatus(403);
   }else{
     for(const id in users){
-      if(users[id].id === req.cookies['user_id']){
+      if(users[id].id === req.session.user_id){
         const id = generateRandomString(6);
         urlDatabase[id] = {
           longURL: req.body.longURL,
-          userID: req.cookies['user_id']
+          userID: req.session.user_id
         };
         console.log(urlDatabase);
         res.redirect(`/urls/${id}`);
@@ -114,13 +121,13 @@ app.post("/urls", (req, res) => {
   app.get("/urls/:id/delete", (req, res)=>{
     console.log(req.params.id);
     //POST /urls/:id/delete should return a relevant error message if the user is not logged in
-    if(!req.cookies['user_id'] || req.cookies['user_id'] === ''){
+    if(!req.session.user_id || req.session.user_id === ''){
       return res.send("you haven't login, can not access this page");
     }
 
     //POST /urls/:id/delete should return a relevant error message if id does not exist
     //POST /urls/:id/delete should return a relevant error message if the user does not own the URL.
-    const currentUserUrls = urlsForUser(req.cookies['user_id']);
+    const currentUserUrls = urlsForUser(req.session.user_id);
     if(currentUserUrls[req.params.id] && currentUserUrls[req.params.id]!== undefined){
       const deleteId = req.params.id;
       delete urlDatabase[deleteId];
@@ -146,12 +153,12 @@ app.post("/urls", (req, res) => {
 
     // go to login page
     app.get('/login', (req, res)=>{
-      if(!req.cookies['user_id'] || req.cookies['user_id'] === ''){
+      if(!req.session.user_id || req.session.user_id === ''){
         goToCertifyPage(res, 'login');
       }else{
         // cookie is exist, we need to check if the cookie matches one of the user in users
         for(const id in users){
-          if(users[id].id === req.cookies['user_id']){
+          if(users[id].id === req.session.user_id){
             return res.redirect('/urls');
           }
         }
@@ -163,14 +170,14 @@ app.post("/urls", (req, res) => {
   // login
   app.post("/login", (req, res)=>{
     const { email, password } = req.body;
-    const user = getUserByEmail(email);
+    const user = getUserByEmail(email, users);
     if(user){
       // check password
-      if(user.password !== password){
+      if(!bcrypt.compareSync(password, user.password)){
         return res.sendStatus(403);
       }else{
         // console.log(`login success: ${user.email}`);
-        res.cookie('user_id', user.id);
+        req.session.user_id = user.id;
         res.redirect('/urls');
       }
       
@@ -182,18 +189,18 @@ app.post("/urls", (req, res) => {
 
   // logout 
   app.get("/logout", (req, res)=>{
-    res.clearCookie('user_id');
+    req.session.user_id = null;
     res.redirect('/login');
   })
 
   // go to register page
   app.get('/register', (req, res)=>{
-    if(!req.cookies['user_id'] || req.cookies['user_id'] === ''){
+    if(!req.session.user_id || req.session.user_id === ''){
       goToCertifyPage(res, 'registration');
     }else{
       // cookie is exist, we need to check if the cookie matches one of the user in users
       for(const id in users){
-        if(users[id].id === req.cookies['user_id']){
+        if(users[id].id === req.session.user_id){
           return res.redirect('/urls');
         }
       }
@@ -211,21 +218,23 @@ app.post("/urls", (req, res) => {
       return res.sendStatus(400);
     }
 
-    if(getUserByEmail(email)){
+    if(getUserByEmail(email, users)){
       // user has already exist
       console.log('--user exist--')
       return res.sendStatus(400);
     }
 
+    const hashedPassword = bcrypt.hashSync(password, 10);
+
     users[userId] = {
       id: userId,
       email,
-      password,
+      password: hashedPassword,
     }
 
     console.log(Object.entries(users));
 
-    res.cookie('user_id', userId);
+    req.session.user_id = userId;
 
     res.redirect('/urls');
   })
@@ -246,16 +255,6 @@ function generateRandomString(length){
     return result;
 }
 
-function getUserByEmail(email){
-  for(const user in users){
-    if(users[user].email === email){
-      return users[user];
-    }
-  }
-
-  return null;
-}
-
 function goToCertifyPage(res, page){
   const templateVars = {
     user: null,
@@ -274,3 +273,4 @@ function urlsForUser(userId){
 
   return userUrls;
 }
+
