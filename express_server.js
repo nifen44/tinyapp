@@ -12,6 +12,8 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com"
 };
 
+const users = {};
+
 // app.get("/", (req, res) => {
 //   return res.send("Hello!");
 // });
@@ -25,26 +27,29 @@ const urlDatabase = {
 //     return res.render('hello_world', templateVars);
 //   });
 
+// go to index page
 app.get('/urls', (req, res)=>{
     const templateVars = {
-      username: req.cookies['username'],
+      user: users[req.cookies['user_id']],
       urls: urlDatabase
     }
     return res.render("urls_index", templateVars);
 })
 
+// go to create page
 app.get('/urls/new', (req, res)=>{
   const templateVars = {
-    username: req.cookies['username'],
+    user: users[req.cookies['user_id']],
   }
     return res.render('urls_new', templateVars);
 })
 
+// go to link detail page
 app.get('/urls/:id', (req, res)=>{
   const templateVars = {
     id: req.params.id, 
     longURL: urlDatabase[req.params.id],
-    username: req.cookies['username'],
+    user: users[req.cookies['user_id']],
   }
 
     if(templateVars){
@@ -52,16 +57,19 @@ app.get('/urls/:id', (req, res)=>{
     }
 })
 
+ // go to real link page by using shortURL
 app.get('/u/:id', (req, res)=>{
     const longURL = urlDatabase[req.params.id];
     res.redirect(longURL);
 })
 
+  // go to edit page
 app.get('/urls/:id/edit', (req, res)=>{
   const editId = req.params.id;
   res.redirect(`/urls/${editId}`);
 })
 
+ // create new link
 app.post("/urls", (req, res) => {
     console.log(req.body); // Log the POST request body to the console
     // res.send("Ok"); // Respond with 'Ok' (we will replace this)
@@ -74,6 +82,7 @@ app.post("/urls", (req, res) => {
     res.redirect(`/urls/${id}`);
   });
 
+  // delete link
   app.post("/urls/:id/delete", (req, res)=>{
     console.log(req.params.id);
 
@@ -83,6 +92,7 @@ app.post("/urls", (req, res) => {
     res.redirect("/urls")
   })
 
+  // edit link
   app.post('/urls/:id/edit', (req, res)=>{
     const { id } = req.params;
     const { longURL } = req.body;
@@ -93,15 +103,58 @@ app.post("/urls", (req, res) => {
     res.redirect("/urls")
   })
 
+  // login
   app.post("/login", (req, res)=>{
-    const { username } = req.body;
-    res.cookie('username', username);
-
-    res.redirect("/urls");
+    const { email, password } = req.body;
+    console.log(email);
+    console.log(users);
+    const user = getUserByEmail(email);
+    if(user){
+      res.cookie('user_id', email);
+      res.redirect('/urls');
+    }else{
+      res.sendStatus(400);
+    }
   })
 
-  app.post("/logout", (req, res)=>{
-    res.clearCookie('username');
+  // go to login page
+  app.get('/login', (req, res)=>{
+    return res.render('login');
+  })
+
+  // logout 
+  app.get("/logout", (req, res)=>{
+    res.clearCookie('user_id');
+    res.redirect('/urls');
+  })
+
+  // go to register page
+  app.get('/register', (req, res)=>{
+    return res.render('registration');
+  })
+
+  // register user
+  app.post('/register', (req, res)=>{
+    const userId = generateRandomString(6);
+    const { email, password } = req.body;
+
+    if(!email || !password){
+      return res.sendStatus(400);
+    }
+
+    if(getUserByEmail(email)){
+      // user has already exist
+      return res.sendStatus(400);
+    }
+
+    users[userId] = {
+      id: userId,
+      email,
+      password,
+    }
+
+    res.cookie('user_id', userId);
+
     res.redirect('/urls');
   })
 
@@ -119,4 +172,14 @@ function generateRandomString(length){
     }
 
     return result;
+}
+
+function getUserByEmail(email){
+  for(const user in users){
+    if(users[user].email === email){
+      return users[user];
+    }
+  }
+
+  return null;
 }
