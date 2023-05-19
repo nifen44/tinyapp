@@ -19,22 +19,22 @@ const PORT = 8080; // default port 8080
 
 /**
  * GET /
- * 
+ *
  * if user is logged in, it should redirect to /urls.
  * if user is not logged in, it should redirect to /login.
- * 
+ *
  */
 app.get('/', (req, res)=>{
-  if(!isLoggedIn){
+  if (!isLoggedIn) {
     goToCertifyPage(res, 'login');
-  }else{
+  } else {
     res.redirect('/urls');
   }
-})
+});
 
 /**
  * /urls
- * 
+ *
  * go to urls list page
  */
 app.get('/urls', (req, res)=>{
@@ -61,7 +61,7 @@ app.get('/urls', (req, res)=>{
 
 /**
  * /urls/new
- * 
+ *
  * go to create url page
  */
 
@@ -79,7 +79,7 @@ app.get('/urls/new', (req, res)=>{
 
 /**
  * /urls/:id
- * 
+ *
  * go to url detail page
  */
 
@@ -91,8 +91,8 @@ app.get('/urls/:id', (req, res)=>{
   }
 
   //POST /urls/:id should return a relevant error message if id does not exist
-  if(urlDatabase[req.params.id] === null || urlDatabase[req.params.id] === undefined){
-    return res.send("The ID you are accessing does not exist.")
+  if (urlDatabase[req.params.id] === null || urlDatabase[req.params.id] === undefined) {
+    return res.send("The ID you are accessing does not exist.");
   }
 
   //POST /urls/:id should return a relevant error message if the user does not own the URL
@@ -115,11 +115,11 @@ app.get('/urls/:id', (req, res)=>{
 
 /**
  * /u/:id
- * 
+ *
  * go to real link page by using shortURL
  */
 app.get('/u/:id', (req, res)=>{
-  if(urlDatabase[req.params.id] === null || urlDatabase[req.params.id] === undefined){
+  if (urlDatabase[req.params.id] === null || urlDatabase[req.params.id] === undefined) {
     res.send("The link you are accessing does not exist");
   }
   const longURL = urlDatabase[req.params.id].longURL;
@@ -128,7 +128,7 @@ app.get('/u/:id', (req, res)=>{
 
 /**
  * /urls/:id/edit
- * 
+ *
  * go to edit page
  */
 app.get('/urls/:id/edit', (req, res)=>{
@@ -138,7 +138,7 @@ app.get('/urls/:id/edit', (req, res)=>{
 
 /**
  * /urls
- * 
+ *
  * create new link
  */
 app.post("/urls", (req, res) => {
@@ -160,7 +160,7 @@ app.post("/urls", (req, res) => {
 
 /**
  * /urls/:id/delete
- * 
+ *
  * delete url
  */
 app.post("/urls/:id/delete", (req, res)=>{
@@ -171,8 +171,8 @@ app.post("/urls/:id/delete", (req, res)=>{
   }
 
   //POST /urls/:id/delete should return a relevant error message if id does not exist
-  if(urlDatabase[req.params.id] === null || urlDatabase[req.params.id] === undefined){
-    return res.send("The ID you are accessing does not exist.")
+  if (urlDatabase[req.params.id] === null || urlDatabase[req.params.id] === undefined) {
+    return res.send("The ID you are accessing does not exist.");
   }
 
   //POST /urls/:id/delete should return a relevant error message if the user does not own the URL.
@@ -188,11 +188,11 @@ app.post("/urls/:id/delete", (req, res)=>{
 
 /**
  * /urls/:id
- * 
+ *
  * edit url
  */
 app.post('/urls/:id', (req, res)=>{
-  if(!isLoggedIn()){
+  if (!isLoggedIn()) {
     // not logged in
     return res.send("You haven't login, please login first.");
   }
@@ -204,7 +204,7 @@ app.post('/urls/:id', (req, res)=>{
 
 /**
  * /login
- * 
+ *
  * go to login page
  */
 app.get('/login', (req, res)=>{
@@ -223,13 +223,13 @@ app.get('/login', (req, res)=>{
 
 /**
  * /login
- * 
+ *
  * user login
  */
 app.post("/login", (req, res)=>{
   const { email, password } = req.body;
 
-  if(email === '' || password === ''){
+  if (email === '' || password === '') {
     res.send('email and password cannot be empty');
   }
   const { err, user } = authenticateUser(email, password, users);
@@ -244,7 +244,7 @@ app.post("/login", (req, res)=>{
 
 /**
  * /logout
- * 
+ *
  * logout user
  */
 app.post("/logout", (req, res)=>{
@@ -254,7 +254,7 @@ app.post("/logout", (req, res)=>{
 
 /**
  * /register
- * 
+ *
  * go to register page
  */
 app.get('/register', (req, res)=>{
@@ -274,14 +274,14 @@ app.get('/register', (req, res)=>{
 
 /**
  * /register
- * 
+ *
  * register user
  */
 app.post('/register', (req, res)=>{
   const userId = generateRandomString(6);
   const { email, password } = req.body;
 
-  if(email === '' || password === ''){
+  if (email === '' || password === '') {
     res.send('email and password cannot be empty');
   }
 
