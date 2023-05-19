@@ -1,4 +1,5 @@
 const express = require("express");
+const methodOverride = require('method-override');
 const app = express();
 const cookieSession = require('cookie-session');
 const bcrypt = require('bcryptjs');
@@ -14,6 +15,7 @@ app.use(cookieSession({
   name:'session',
   keys: ['my favorite thing', 'learning'],
 }));
+app.use(methodOverride('X-HTTP-Method-Override'));
 
 const urlDatabase = {
   // "b2xVn2": {longURL: "http://www.lighthouselabs.ca", userID: "aJ48lW"},
@@ -114,7 +116,7 @@ app.post("/urls", (req, res) => {
       }
     }
   }
-  //console.log(req.body); 
+  //console.log(req.body);
     
 });
 
@@ -169,7 +171,7 @@ app.post("/login", (req, res)=>{
   const { email, password } = req.body;
   const { err, user } = authenticateUser(email, password, users);
 
-  if(err){
+  if (err) {
     return res.json(err);
   }
 
