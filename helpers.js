@@ -1,5 +1,12 @@
 const bcrypt = require('bcryptjs');
 
+/**
+ * Get user from users database by email
+ * 
+ * @param {string} email 
+ * @param {array} database 
+ * @returns 
+ */
 const getUserByEmail = (email, database)=>{
   for (const id in database) {
     if (database[id].email === email) {
@@ -10,6 +17,12 @@ const getUserByEmail = (email, database)=>{
   return undefined;
 };
 
+/**
+ * Generate a random id by given id length
+ * 
+ * @param {number} length 
+ * @returns 
+ */
 const generateRandomString = (length)=>{
   const alphanumeric = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
@@ -22,14 +35,27 @@ const generateRandomString = (length)=>{
   return result;
 };
 
-const goToCertifyPage = (res, page, database)=>{
+/**
+ * Go to certain Page
+ * 
+ * @param {Request} res 
+ * @param {string} page 
+ * @returns 
+ */
+const goToCertifyPage = (res, page)=>{
   const templateVars = {
     user: null,
-    urls: database
   };
   return res.render(page, templateVars);
 };
 
+/**
+ * Get urls which is created by the given userId's user
+ * 
+ * @param {string} userId 
+ * @param {array} database 
+ * @returns 
+ */
 const urlsForUser = (userId, database)=>{
   let userUrls = {};
   for (const id in database) {
@@ -41,11 +67,25 @@ const urlsForUser = (userId, database)=>{
   return userUrls;
 };
 
+/**
+ * To check if the user is already logged In by the given sessionId
+ * 
+ * @param {string} id 
+ * @returns 
+ */
 const isLoggedIn = (id)=>{
-  if (!id || id === '') return true;
+  if (id && id !== '') return true;
   return false;
 };
 
+/**
+ * To verify if the user if in our users database by given email and password
+ * 
+ * @param {string} email 
+ * @param {string} password 
+ * @param {array} users 
+ * @returns 
+ */
 const authenticateUser = (email, password, users)=>{
   let currentUser = null;
 
