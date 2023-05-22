@@ -25,7 +25,7 @@ const PORT = 8080; // default port 8080
  *
  */
 app.get('/', (req, res)=>{
-  if (!isLoggedIn) {
+  if (!isLoggedIn(req.session.user_id)) {
     goToCertifyPage(res, 'login');
   } else {
     res.redirect('/urls');
@@ -40,7 +40,7 @@ app.get('/', (req, res)=>{
 app.get('/urls', (req, res)=>{
   if (!isLoggedIn(req.session.user_id)) {
     // didn't Logged in
-    return res.send("You haven't login, please login in!");
+    return res.status(401).send("You haven't login, please login in!");
   } else {
     // Logged in
     for (const id in users) {
@@ -87,12 +87,12 @@ app.get('/urls/:id', (req, res)=>{
 
   //POST /urls/:id should return a relevant error message if the user is not logged in
   if (!isLoggedIn(req.session.user_id)) {
-    return res.send("You haven't login, can not access this page");
+    return res.status(401).send("You haven't login, can not access this page");
   }
 
   //POST /urls/:id should return a relevant error message if id does not exist
   if (urlDatabase[req.params.id] === null || urlDatabase[req.params.id] === undefined) {
-    return res.send("The ID you are accessing does not exist.");
+    return res.status(400).send("The ID you are accessing does not exist.");
   }
 
   //POST /urls/:id should return a relevant error message if the user does not own the URL
@@ -108,7 +108,7 @@ app.get('/urls/:id', (req, res)=>{
       return res.render("urls_show", templateVars);
     }
   } else {
-    res.send('You can not access this url');
+    return res.status(403).send('You can not access this url');
   }
   
 });
@@ -120,7 +120,7 @@ app.get('/urls/:id', (req, res)=>{
  */
 app.get('/u/:id', (req, res)=>{
   if (urlDatabase[req.params.id] === null || urlDatabase[req.params.id] === undefined) {
-    res.send("The link you are accessing does not exist");
+    return res.status(401).send("The link you are accessing does not exist");
   }
   const longURL = urlDatabase[req.params.id].longURL;
   res.redirect(longURL);
@@ -143,7 +143,7 @@ app.get('/urls/:id/edit', (req, res)=>{
  */
 app.post("/urls", (req, res) => {
   if (!isLoggedIn(req.session.user_id)) {
-    return res.sendStatus(403);
+    return res.status(401).send("You haven't login, please login in!");
   } else {
     for (const id in users) {
       if (users[id].id === req.session.user_id) {
@@ -164,15 +164,14 @@ app.post("/urls", (req, res) => {
  * delete url
  */
 app.post("/urls/:id/delete", (req, res)=>{
-  console.log(req.params.id);
   //POST /urls/:id/delete should return a relevant error message if the user is not logged in
   if (!isLoggedIn(req.session.user_id)) {
-    return res.send("you haven't login, can not access this page");
+    return res.status(401).send("you haven't login, can not access this page");
   }
 
   //POST /urls/:id/delete should return a relevant error message if id does not exist
   if (urlDatabase[req.params.id] === null || urlDatabase[req.params.id] === undefined) {
-    return res.send("The ID you are accessing does not exist.");
+    return res.status(404).send("The ID you are accessing does not exist.");
   }
 
   //POST /urls/:id/delete should return a relevant error message if the user does not own the URL.
@@ -182,7 +181,7 @@ app.post("/urls/:id/delete", (req, res)=>{
     delete urlDatabase[deleteId];
     res.redirect("/urls");
   } else {
-    res.send("No such url");
+    return res.status(404).send("No such url");
   }
 });
 
@@ -192,9 +191,9 @@ app.post("/urls/:id/delete", (req, res)=>{
  * edit url
  */
 app.post('/urls/:id', (req, res)=>{
-  if (!isLoggedIn()) {
+  if (!isLoggedIn(req.session.user_id)) {
     // not logged in
-    return res.send("You haven't login, please login first.");
+    return res.status(401).send("You haven't login, please login first.");
   }
   const { id } = req.params;
   const { longURL } = req.body;
@@ -230,7 +229,7 @@ app.post("/login", (req, res)=>{
   const { email, password } = req.body;
 
   if (email === '' || password === '') {
-    res.send('email and password cannot be empty');
+    res.status(400).send('email and password cannot be empty');
   }
   const { err, user } = authenticateUser(email, password, users);
 
@@ -282,12 +281,12 @@ app.post('/register', (req, res)=>{
   const { email, password } = req.body;
 
   if (email === '' || password === '') {
-    res.send('email and password cannot be empty');
+    res.status(400).send('email and password cannot be empty');
   }
 
   if (getUserByEmail(email, users)) {
     // user has already exist
-    res.send('user is already registered');
+    res.status(400).send('user is already registered');
   }
 
   const hashedPassword = bcrypt.hashSync(password, salt);
